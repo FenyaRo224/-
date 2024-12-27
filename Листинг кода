@@ -1,0 +1,1473 @@
+Форма1:
+using System;
+using System.Data.SqlClient;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+            LoadData(null, null);
+            LoadFilterOptions();
+        }
+
+        private void LoadFilterOptions()
+        {
+            string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+            string query = "SELECT CategoryName FROM dbo.Category";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    comboBox1.Items.Clear();
+                    comboBox1.Items.Add("");
+
+                    while (reader.Read())
+                    {
+                        comboBox1.Items.Add(reader["CategoryName"].ToString());
+                    }
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка загрузки Категории: " + ex.Message);
+                }
+            }
+        }
+
+        private void LoadData(string searchQuery, string filter)
+        {
+            string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+            string query = @"
+                SELECT na.Title, na.Content, c.CategoryName, na.AgencyID
+                FROM dbo.NewsArticles na
+                INNER JOIN dbo.category c ON na.CategoryID = c.CategoryID
+                WHERE 1 = 1";
+
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                query += " AND na.Title LIKE @SearchQuery";
+            }
+            if (!string.IsNullOrEmpty(filter))
+            {
+                query += " AND c.CategoryName = @Filter";
+            }
+
+            listBox1.Items.Clear();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+                if (!string.IsNullOrEmpty(searchQuery))
+                {
+                    command.Parameters.AddWithValue("@SearchQuery", "%" + searchQuery + "%");
+                }
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    command.Parameters.AddWithValue("@Filter", filter);
+                }
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        listBox1.Items.Add(reader["Title"].ToString());
+                    }
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка подключения: " + ex.Message);
+                }
+            }
+        }
+
+        private void LoadData()
+        {
+            LoadData(null, null);
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            LoadData();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            string searchQuery = textBox1.Text;
+            string filter = comboBox1.SelectedItem?.ToString();
+            LoadData(searchQuery, filter);
+        }
+
+        private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (listBox1.SelectedItem == null) return;
+
+            string selectedTitle = listBox1.SelectedItem.ToString();
+
+            string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+            string query = @"
+                SELECT na.Title, na.Content, c.CategoryName, na.AgencyID
+                FROM dbo.NewsArticles na
+                INNER JOIN dbo.category c ON na.CategoryID = c.CategoryID
+                WHERE na.Title = @Title";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@Title", selectedTitle);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        string title = reader["Title"].ToString();
+                        string content = reader["Content"].ToString();
+                        string category = reader["CategoryName"].ToString();
+                        int agencyId = Convert.ToInt32(reader["AgencyID"]);
+
+                        иНформация_о_новости detailsForm = new иНформация_о_новости(title, content, category, agencyId);
+                        detailsForm.ShowDialog();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Новость не найдена.", "Ошибка");
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка при загрузке данных: " + ex.Message, "Ошибка");
+                }
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            LoadData();
+        }
+        private void buttonRefresh_Click(object sender, EventArgs e)
+        {
+            LoadData();
+        }
+        private void button3_Click(object sender, EventArgs e)
+        {
+            Добавить_новость addNewsForm = new Добавить_новость();
+            addNewsForm.ShowDialog();
+        }
+
+        private void button3_Click_1(object sender, EventArgs e)
+        {
+            Добавить_новость addNewsForm = new Добавить_новость();
+            addNewsForm.ShowDialog();
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            Отправить_рассылку sendNewsForm = new Отправить_рассылку();
+            sendNewsForm.ShowDialog();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            UsersListForm usersListForm = new UsersListForm();
+            usersListForm.ShowDialog();
+        }
+
+        private void button1_Click_1(object sender, EventArgs e)
+        {
+            this.Close();
+            Авторизация avt = new Авторизация();
+            avt.Show();
+        }
+    }
+}
+
+Форма2:
+using System;
+using System.Data.SqlClient;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class Form2 : Form
+    {
+        public Form2()
+        {
+            InitializeComponent();
+            LoadData(null, null);
+            LoadFilterOptions();
+        }
+
+        // Загрузка категорий в ComboBox
+        private void LoadFilterOptions()
+        {
+            string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+            string query = "SELECT DISTINCT CategoryName FROM dbo.Category";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    comboBox1.Items.Clear();
+                    comboBox1.Items.Add(""); // Добавляем пустой пункт для сброса фильтра
+
+                    while (reader.Read())
+                    {
+                        comboBox1.Items.Add(reader["CategoryName"].ToString());
+                    }
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка загрузки категорий: " + ex.Message);
+                }
+            }
+        }
+
+        // Загрузка данных в ListBox
+        private void LoadData(string searchQuery, string filter)
+        {
+            string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+            string query = "SELECT Title FROM dbo.NewsArticles WHERE 1=1";
+
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                query += " AND Title LIKE @SearchQuery";
+            }
+            if (!string.IsNullOrEmpty(filter))
+            {
+                query += " AND CategoryID = (SELECT CategoryID FROM dbo.Category WHERE CategoryName = @Filter)";
+            }
+
+            listBox1.Items.Clear();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+                if (!string.IsNullOrEmpty(searchQuery))
+                {
+                    command.Parameters.AddWithValue("@SearchQuery", "%" + searchQuery + "%");
+                }
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    command.Parameters.AddWithValue("@Filter", filter);
+                }
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        listBox1.Items.Add(reader["Title"].ToString());
+                    }
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка загрузки данных: " + ex.Message);
+                }
+            }
+        }
+
+        private void LoadData() => LoadData(null, null);
+
+        private void Form2_Load(object sender, EventArgs e)
+        {
+            LoadData();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            string searchQuery = textBox1.Text;
+            string filter = comboBox1.SelectedItem?.ToString();
+            LoadData(searchQuery, filter);
+        }
+
+        private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (listBox1.SelectedItem == null) return;
+
+            string selectedTitle = listBox1.SelectedItem.ToString();
+
+            string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+            string query = "SELECT Title, Content, Category, AgencyID FROM dbo.NewsArticles WHERE Title = @Title";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@Title", selectedTitle);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        string title = reader["Title"].ToString();
+                        string content = reader["Content"].ToString();
+                        string category = reader["Category"].ToString();
+                        int agencyId = Convert.ToInt32(reader["AgencyID"]);
+
+                        // Передаём все параметры в конструктор
+                        иНформация_о_новости infoForm = new иНформация_о_новости(title, content, category, agencyId);
+                        infoForm.ShowDialog();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Новость не найдена.", "Ошибка");
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка при загрузке данных: " + ex.Message, "Ошибка");
+                }
+            }
+        }
+
+
+        private void button1_Click(object sender, EventArgs e) => LoadData();
+
+        private void button1_Click_1(object sender, EventArgs e)
+        {
+            this.Close();
+            Авторизация avt = new Авторизация();
+            avt.Show();
+        }
+
+        private void button3_Click_1(object sender, EventArgs e)
+        {
+            Отправить_рассылку sendNewsForm = new Отправить_рассылку();
+            sendNewsForm.ShowDialog();
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            Добавить_новость addNewsForm = new Добавить_новость();
+            addNewsForm.ShowDialog();
+        }
+
+        private void buttonRefresh_Click(object sender, EventArgs e) => LoadData();
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e) { }
+        private void textBox1_TextChanged(object sender, EventArgs e) { }
+        private void label3_Click(object sender, EventArgs e) { }
+        private void pictureBox1_Click(object sender, EventArgs e) { }
+    }
+}
+
+Список пользователей:
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data.SqlClient;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class UsersListForm : Form
+    {
+        string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+        public UsersListForm()
+        {
+            InitializeComponent();
+        }
+
+        private void UsersListForm_Load(object sender, EventArgs e)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string query = "SELECT UserID, FirstName, LastName, Email, STATUS FROM Users";
+                SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
+                DataTable dataTable = new DataTable();
+
+                try
+                {
+                    connection.Open();
+                    adapter.Fill(dataTable);
+                    dataGridView1.DataSource = dataTable; 
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка загрузки данных");
+                }
+            }
+        }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+    }
+    
+}
+
+Авторизация:
+using System;
+using System.Data.SqlClient;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class Авторизация : Form
+    {
+        // Строка подключения к базе данных SQL Server
+        private string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+
+        // Свойство для хранения текущего ID пользователя
+        public static int CurrentUserId { get; set; }
+
+        public Авторизация()
+        {
+            InitializeComponent();
+        }
+
+        private void textBox3_TextChanged(object sender, EventArgs e)
+        {
+            // Устанавливаем символ '*' для поля ввода пароля
+            textBox3.PasswordChar = '*';
+            textBox3.UseSystemPasswordChar = true;
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            string email = textBox1.Text.Trim();
+            string password = textBox3.Text.Trim();
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+            {
+                MessageBox.Show("Введите email и пароль!", "Ошибка");
+                return;
+            }
+
+            // Получение информации о пользователе из базы данных
+            UserInfo userInfo = GetUserInfo(email, password);
+
+            if (userInfo != null)
+            {
+                // Открываем соответствующую форму в зависимости от роли пользователя
+                if (userInfo.Status == "Admin")
+                {
+                    MessageBox.Show($"Добро пожаловать, {userInfo.FirstName} {userInfo.LastName} (Администратор)!", "Успешный вход");
+                    Form1 adminForm = new Form1(); // Форма администратора
+                    adminForm.Show();
+                }
+                else if (userInfo.Status == "User")
+                {
+                    MessageBox.Show($"Добро пожаловать, {userInfo.FirstName} {userInfo.LastName}!", "Успешный вход");
+                    Form2 userForm = new Form2(); // Форма пользователя
+                    userForm.Show();
+                }
+
+                // Скрываем текущую форму
+                this.Hide();
+            }
+            else
+            {
+                MessageBox.Show("Неверные учетные данные!", "Ошибка");
+            }
+        }
+
+        // Метод для получения информации о пользователе из базы данных
+        private UserInfo GetUserInfo(string email, string password)
+        {
+            UserInfo userInfo = null;
+
+            string query = "SELECT UserId, FirstName, LastName, Status FROM Users WHERE Email = @Email AND Password = @Password";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    // Добавление параметров в запрос
+                    command.Parameters.AddWithValue("@Email", email);
+                    command.Parameters.AddWithValue("@Password", password);
+
+                    try
+                    {
+                        connection.Open();
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            if (reader.Read()) // Если найдена запись
+                            {
+                                userInfo = new UserInfo
+                                {
+                                    UserId = Convert.ToInt32(reader["UserId"]),
+                                    FirstName = reader["FirstName"].ToString(),
+                                    LastName = reader["LastName"].ToString(),
+                                    Status = reader["Status"].ToString()
+                                };
+
+                                // Сохраняем текущий ID пользователя
+                                CurrentUserId = userInfo.UserId;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Ошибка подключения к базе данных: {ex.Message}", "Ошибка");
+                    }
+                }
+            }
+
+            return userInfo;
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            // Переключение видимости пароля
+            textBox3.PasswordChar = textBox3.PasswordChar == '*' ? '\0' : '*';
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            // Открытие формы регистрации
+            Регистрация registrationForm = new Регистрация();
+            registrationForm.ShowDialog();
+        }
+
+        private void buttonExit_Click(object sender, EventArgs e)
+        {
+            // Выход из приложения
+            Application.Exit();
+        }
+
+        private void Авторизация_Load(object sender, EventArgs e)
+        {
+
+        }
+    }
+
+    // Класс для хранения информации о пользователе
+    public class UserInfo
+    {
+        public int UserId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Status { get; set; }
+    }
+}
+
+Добавить новость:
+using System;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class Добавить_новость : Form
+    {
+        private string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+
+        public Добавить_новость()
+        {
+            InitializeComponent();
+        }
+
+        private void Добавить_новость_Load(object sender, EventArgs e)
+        {
+            LoadAgencies();
+            LoadCategories();
+        }
+
+        private void ToggleFontStyle(FontStyle style)
+        {
+            if (richTextBoxContent.SelectionFont != null)
+            {
+                Font currentFont = richTextBoxContent.SelectionFont;
+                FontStyle newFontStyle = currentFont.Style;
+
+                // Переключаем выбранный стиль
+                if (currentFont.Style.HasFlag(style))
+                {
+                    newFontStyle &= ~style; // Убираем стиль
+                }
+                else
+                {
+                    newFontStyle |= style; // Добавляем стиль
+                }
+
+                richTextBoxContent.SelectionFont = new Font(currentFont.FontFamily, currentFont.Size, newFontStyle);
+            }
+        }
+
+        private void LoadAgencies()
+        {
+            comboBoxAgency.Items.Clear();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string query = "SELECT AgencyID, AgencyName FROM NewsAgencies";
+
+                SqlCommand command = new SqlCommand(query, connection);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        comboBoxAgency.Items.Add(new ComboBoxItem
+                        {
+                            Text = reader["AgencyName"].ToString(),
+                            Value = reader["AgencyID"]
+                        });
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка загрузки агентств: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+        private void LoadCategories()
+        {
+            comboBoxCategory.Items.Clear();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string query = "SELECT CategoryName FROM Category";
+
+                SqlCommand command = new SqlCommand(query, connection);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        comboBoxCategory.Items.Add(reader["CategoryName"].ToString());
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка загрузки категорий: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+        private void buttonAddNews_Click(object sender, EventArgs e)
+        {
+            string title = textBoxTitle.Text;
+            string content = richTextBoxContent.Rtf; // Сохранение RTF-формата
+            string category = comboBoxCategory.Text;
+            ComboBoxItem selectedAgency = comboBoxAgency.SelectedItem as ComboBoxItem;
+
+            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(content) || string.IsNullOrEmpty(category) || selectedAgency == null)
+            {
+                MessageBox.Show("Пожалуйста, заполните все поля и выберите агентство.", "Ошибка");
+                return;
+            }
+
+            int agencyId = Convert.ToInt32(selectedAgency.Value);
+            int userId = Авторизация.CurrentUserId;
+
+            string query = "INSERT INTO NewsArticles (Title, Content, AgencyID, CategoryID, UserId) " +
+                           "VALUES (@Title, @Content, @AgencyID, " +
+                           "(SELECT CategoryID FROM Category WHERE CategoryName = @CategoryName), @UserId)";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@Title", title);
+                command.Parameters.AddWithValue("@Content", content);
+                command.Parameters.AddWithValue("@AgencyID", agencyId);
+                command.Parameters.AddWithValue("@CategoryName", category);
+                command.Parameters.AddWithValue("@UserId", userId);
+
+                try
+                {
+                    connection.Open();
+                    command.ExecuteNonQuery();
+                    MessageBox.Show("Новость успешно добавлена!", "Успех");
+
+                    // Очистка полей после успешного добавления
+                    textBoxTitle.Clear();
+                    richTextBoxContent.Clear();
+                    comboBoxCategory.SelectedIndex = -1;
+                    comboBoxAgency.SelectedIndex = -1;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при добавлении новости: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "Изображения (*.bmp;*.jpg;*.png)|*.bmp;*.jpg;*.png"
+            };
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    Image image = Image.FromFile(openFileDialog.FileName);
+                    Clipboard.SetImage(image);
+                    richTextBoxContent.Paste();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка вставки изображения: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+        private void checkBox2_CheckedChanged(object sender, EventArgs e)
+        {
+            ToggleFontStyle(FontStyle.Italic);
+        }
+
+        private void checkBox3_CheckedChanged(object sender, EventArgs e)
+        {
+            ToggleFontStyle(FontStyle.Underline);
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            ToggleFontStyle(FontStyle.Bold);
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog colorDialog = new ColorDialog())
+            {
+                if (colorDialog.ShowDialog() == DialogResult.OK)
+                {
+                    richTextBoxContent.SelectionColor = colorDialog.Color;
+                }
+            }
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            using (FontDialog fontDialog = new FontDialog())
+            {
+                fontDialog.Font = richTextBoxContent.SelectionFont ?? richTextBoxContent.Font;
+
+                if (fontDialog.ShowDialog() == DialogResult.OK)
+                {
+                    richTextBoxContent.SelectionFont = fontDialog.Font;
+                }
+            }
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            Создание_Категории categoryForm = new Создание_Категории();
+            categoryForm.ShowDialog();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            CreateAgencyForm agencyForm = new CreateAgencyForm();
+            agencyForm.ShowDialog();
+        }
+
+    }
+
+    public class ComboBoxItem
+    {
+        public string Text { get; set; }
+        public object Value { get; set; }
+
+        public override string ToString()
+        {
+            return Text;
+        }
+    }
+}
+
+Информация о новости:
+using System;
+using System.Data.SqlClient;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class иНформация_о_новости : Form
+    {
+        private int agencyId;
+        private string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+
+        public иНформация_о_новости(string title, string content, string category, int agencyId)
+        {
+            InitializeComponent();
+            Название.Text = title;
+            this.agencyId = agencyId;
+            Название.Text = title;
+            TextBoxContent.Rtf = content; // Используем RTF для отображения форматированного текста
+        }
+
+        private void иНформация_о_новости_Load(object sender, EventArgs e)
+        {
+            LoadAgencyInfo();
+        }
+
+        private void LoadAgencyInfo()
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string query = "SELECT AgencyName, Website FROM NewsAgencies WHERE AgencyID = @AgencyID";
+
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@AgencyID", agencyId);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        label1.Text = reader["AgencyName"].ToString();
+                        linkLabel1.Text = reader["Website"].ToString();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Информация об агентстве не найдена.", "Ошибка");
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка загрузки информации об агентстве: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+        private void linkLabelWebsite_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(linkLabel1.Text);
+            }
+            catch
+            {
+                MessageBox.Show("Не удалось открыть ссылку.", "Ошибка");
+            }
+        }
+
+        private void buttonClose_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void TextBoxContent_TextChanged(object sender, EventArgs e)
+        {
+            // Если потребуется обработка изменений текста
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+    }
+}
+Отправить рассылку:
+using System;
+using System.Data.SqlClient;
+using System.Net;
+using System.Net.Mail;
+using System.Text;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class Отправить_рассылку : Form
+    {
+        private string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+
+        public Отправить_рассылку()
+        {
+            InitializeComponent();
+        }
+
+        private void buttonSend_Click(object sender, EventArgs e)
+        {
+            if (checkedListBoxEmails.CheckedItems.Count == 0 || comboBoxNews.SelectedItem == null)
+            {
+                MessageBox.Show("Выберите хотя бы один адрес и новость.", "Ошибка");
+                return;
+            }
+
+            ComboBoxItem selectedNewsItem = comboBoxNews.SelectedItem as ComboBoxItem;
+            int articleId = (int)selectedNewsItem.Value;
+
+            if (GetNewsDetails(articleId, out string title, out string content))
+            {
+                string subject = $"Новость: {title}";
+                string body = $"Здравствуйте!\n\nМы рады сообщить вам новость: {title}.\n\n{content}";
+
+                StringBuilder failedEmails = new StringBuilder();
+
+                foreach (string email in checkedListBoxEmails.CheckedItems)
+                {
+                    if (!SendEmail(email, subject, body))
+                    {
+                        failedEmails.AppendLine(email);
+                    }
+                }
+
+                if (failedEmails.Length > 0)
+                {
+                    MessageBox.Show($"Не удалось отправить письма на адреса:\n{failedEmails}", "Ошибка");
+                }
+                else
+                {
+                    MessageBox.Show("Письма успешно отправлены!", "Успех");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Не удалось получить детали новости.", "Ошибка");
+            }
+        }
+
+
+
+        private void Отправить_рассылку_Load(object sender, EventArgs e)
+        {
+            LoadNewsArticles();
+            LoadEmailAddresses();
+        }
+
+        private void LoadEmailAddresses()
+        {
+            checkedListBoxEmails.Items.Clear();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string query = "SELECT Email FROM Users";
+
+                SqlCommand command = new SqlCommand(query, connection);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        checkedListBoxEmails.Items.Add(reader["Email"].ToString());
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка загрузки адресов: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+
+        private void LoadNewsArticles()
+        {
+            comboBoxNews.Items.Clear();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string query = "SELECT ArticleID, Title FROM NewsArticles";
+
+                SqlCommand command = new SqlCommand(query, connection);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        comboBoxNews.Items.Add(new ComboBoxItem
+                        {
+                            Text = reader["Title"].ToString(),
+                            Value = reader["ArticleID"]
+                        });
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка загрузки новостей: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+        private bool GetNewsDetails(int articleId, out string title, out string content)
+        {
+            title = null;
+            content = null;
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string query = "SELECT Title, Content FROM NewsArticles WHERE ArticleID = @ArticleID";
+
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ArticleID", articleId);
+
+                try
+                {
+                    connection.Open();
+                    SqlDataReader reader = command.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        title = reader["Title"].ToString();
+                        content = reader["Content"].ToString();
+                        return true;
+                    }
+
+                    reader.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка загрузки новости: {ex.Message}", "Ошибка");
+                }
+            }
+
+            return false;
+        }
+
+        private bool SendEmail(string email, string subject, string body)
+        {
+
+            string smtpServer = "smtp.mail.ru";
+            int smtpPort = 587;
+            string smtpUsername = "dosytamurza@mail.ru"; 
+            string smtpPassword = "j9N6xFtCwGqsmTbE40ms"; 
+
+            try
+            {
+                using (SmtpClient smtpClient = new SmtpClient(smtpServer, smtpPort))
+                {
+                    smtpClient.Credentials = new NetworkCredential(smtpUsername, smtpPassword);
+                    smtpClient.EnableSsl = true;
+
+                    using (MailMessage mailMessage = new MailMessage())
+                    {
+                        mailMessage.From = new MailAddress(smtpUsername);
+                        mailMessage.To.Add(email);
+                        mailMessage.Subject = subject;
+                        mailMessage.Body = body;
+                        mailMessage.SubjectEncoding = Encoding.UTF8;
+                        mailMessage.BodyEncoding = Encoding.UTF8;
+
+                        smtpClient.Send(mailMessage);
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка отправки email: {ex.Message}", "Ошибка");
+                return false;
+            }
+        }
+
+        public class ComboBoxItem
+        {
+            public string Text { get; set; }
+            public object Value { get; set; }
+
+            public override string ToString()
+            {
+                return Text;
+            }
+        }
+
+        private void Назад_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void comboBoxNews_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void checkedListBoxEmails_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
+
+Регистрация:
+using System;
+using System.Data.SqlClient;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class Регистрация : Form
+    {
+        // Строка подключения к базе данных
+        private string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+
+        // Список разрешенных доменов
+        private readonly string[] allowedDomains = { "gmail.com", "mail.ru", "yahoo.com", "outlook.com" };
+
+        public Регистрация()
+        {
+            InitializeComponent();
+        }
+
+        private void buttonRegister_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+                "Хотите ли вы получать рассылки новостей на вашу почту?",
+                "Подписка на рассылку",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            );
+
+            // Если пользователь выбирает "Нет", отменяем регистрацию
+            if (result == DialogResult.No)
+            {
+                MessageBox.Show("Регистрация отменена. Для регистрации нужно согласиться на получение рассылок.", "Информация");
+                return;
+            }
+            // Сбор данных с формы
+            string firstName = textBoxFirstName1.Text.Trim();
+            string lastName = textBoxLastName.Text.Trim();
+            string email = textBoxEmail.Text.Trim();
+            string password = textBoxPassword.Text.Trim();
+
+            // Проверка на заполнение всех полей
+            if (string.IsNullOrWhiteSpace(firstName) ||
+                string.IsNullOrWhiteSpace(lastName) ||
+                string.IsNullOrWhiteSpace(email) ||
+                string.IsNullOrWhiteSpace(password))
+            {
+                MessageBox.Show("Все поля должны быть заполнены.", "Ошибка");
+                return;
+            }
+
+            // Проверка корректности email
+            if (!IsValidEmail(email))
+            {
+                MessageBox.Show("Введите корректный адрес электронной почты.", "Ошибка");
+                return;
+            }
+
+            // Проверка разрешенных доменов
+            if (!IsAllowedDomain(email))
+            {
+                MessageBox.Show("Регистрация разрешена только с определенными доменами: gmail.com, mail.ru, yahoo.com, outlook.com.", "Ошибка");
+                return;
+            }
+
+            // Проверка длины пароля
+            if (password.Length < 6)
+            {
+                MessageBox.Show("Пароль должен содержать не менее 6 символов.", "Ошибка");
+                return;
+            }
+
+            // Проверка на уникальность email
+            if (IsEmailRegistered(email))
+            {
+                MessageBox.Show("Этот email уже зарегистрирован.", "Ошибка");
+                return;
+            }
+
+            try
+            {
+                // Сохранение данных пользователя в базу
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    string query = @"INSERT INTO Users 
+                                     (FirstName, LastName, Email, Password, Status, RegistrationDate) 
+                                     VALUES (@FirstName, @LastName, @Email, @Password, @Status, @RegistrationDate)";
+
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        // Параметры запроса
+                        command.Parameters.AddWithValue("@FirstName", firstName);
+                        command.Parameters.AddWithValue("@LastName", lastName);
+                        command.Parameters.AddWithValue("@Email", email);
+                        command.Parameters.AddWithValue("@Password", password); // Рекомендуется хэшировать пароль
+                        command.Parameters.AddWithValue("@Status", "User");
+                        command.Parameters.AddWithValue("@RegistrationDate", DateTime.Now);
+
+                        connection.Open();
+                        int rowsInserted = command.ExecuteNonQuery();
+
+                        if (rowsInserted > 0)
+                        {
+                            MessageBox.Show("Регистрация успешно завершена!", "Успех");
+                            this.Close(); // Закрытие формы
+                        }
+                        else
+                        {
+                            MessageBox.Show("Произошла ошибка при регистрации. Попробуйте снова.", "Ошибка");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при регистрации: {ex.Message}", "Ошибка");
+            }
+        }
+
+        // Метод для проверки корректности email
+        private bool IsValidEmail(string email)
+        {
+            string emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+            return Regex.IsMatch(email, emailPattern);
+        }
+
+        // Метод для проверки разрешенных доменов
+        private bool IsAllowedDomain(string email)
+        {
+            string domain = email.Split('@')[1]; // Извлечение домена из email
+            foreach (var allowedDomain in allowedDomains)
+            {
+                if (domain.Equals(allowedDomain, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Метод для проверки, зарегистрирован ли email
+        private bool IsEmailRegistered(string email)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    string query = "SELECT COUNT(*) FROM Users WHERE Email = @Email";
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Email", email);
+                        connection.Open();
+
+                        int count = (int)command.ExecuteScalar();
+                        return count > 0; // Если есть хотя бы одна запись с таким email
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при проверке email: {ex.Message}", "Ошибка");
+                return true; // В случае ошибки считаем email уже зарегистрированным
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            this.Close(); // Закрытие формы
+        }
+
+        private void Регистрация_Load(object sender, EventArgs e)
+        {
+            // Код для загрузки формы, если требуется
+        }
+    }
+}
+
+Создание агенства:
+using System;
+using System.Data.SqlClient;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class CreateAgencyForm : Form
+    {
+        private string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+
+        public CreateAgencyForm()
+        {
+            InitializeComponent();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            string agencyName = textBox1.Text.Trim(); // Имя агентства
+            string website = textBox2.Text.Trim(); // Сайт агентства
+
+            // Проверка на заполненность полей
+            if (string.IsNullOrWhiteSpace(agencyName) || string.IsNullOrWhiteSpace(website))
+            {
+                MessageBox.Show("Пожалуйста, заполните все поля.", "Ошибка");
+                return;
+            }
+
+            // Проверка корректности URL
+            if (!IsValidWebsite(website))
+            {
+                MessageBox.Show("Сайт должен начинаться с 'https://' и оканчиваться на '.com' или '.ru'.", "Некорректный формат сайта");
+                return;
+            }
+
+            try
+            {
+                // Запрос на добавление агентства
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    string query = "INSERT INTO NewsAgencies (AgencyName, Website) VALUES (@AgencyName, @Website)";
+                    SqlCommand command = new SqlCommand(query, connection);
+
+                    command.Parameters.AddWithValue("@AgencyName", agencyName);
+                    command.Parameters.AddWithValue("@Website", website);
+
+                    connection.Open();
+                    command.ExecuteNonQuery();
+
+                    MessageBox.Show("Новое агентство успешно добавлено!", "Успех");
+
+                    // Очистка полей после добавления
+                    textBox1.Clear();
+                    textBox2.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при добавлении агентства: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private bool IsValidWebsite(string website)
+        {
+            // Регулярное выражение для проверки URL
+            string pattern = @"^https:\/\/.*\.(com|ru)$";
+            return Regex.IsMatch(website, pattern, RegexOptions.IgnoreCase);
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void CreateAgencyForm_Load(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
+
+Создание категории:
+using System;
+using System.Data.SqlClient;
+using System.Windows.Forms;
+
+namespace Курсовая1
+{
+    public partial class Создание_Категории : Form
+    {
+        private string connectionString = "Server=ROMASHKAPC;Database=NewsletterManagement;Trusted_Connection=True;";
+
+        public Создание_Категории()
+        {
+            InitializeComponent();
+        }
+
+        private void Создание_Категории_Load(object sender, EventArgs e)
+        {
+            // Если потребуется загрузка данных, её можно добавить здесь
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            string categoryName = textBox3.Text.Trim(); // Название категории
+
+            // Проверка на заполненность полей
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                MessageBox.Show("Пожалуйста, введите название категории.", "Ошибка");
+                return;
+            }
+
+            try
+            {
+                // Запрос на добавление категории
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    string query = "INSERT INTO Category (CategoryName) VALUES (@CategoryName)";
+                    SqlCommand command = new SqlCommand(query, connection);
+
+                    command.Parameters.AddWithValue("@CategoryName", categoryName);
+
+                    connection.Open();
+                    command.ExecuteNonQuery();
+
+                    MessageBox.Show("Новая категория успешно добавлена!", "Успех");
+
+                    // Очистка текстового поля после добавления
+                    textBox3.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при добавлении категории: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+    }
+}
